@@ -17,7 +17,7 @@
     
     <!-- 接続状況・状態表示 -->
     <div id="status" class="alert alert-info text-center">
-      USB接続されたゲームコントローラーの接続をお待ちしています…
+      USBゲームコントローラーの接続をお待ちしています…
     </div>
 
     <!-- 説明・操作手順 -->
@@ -163,7 +163,7 @@
     function mainLoop() {
       const gamepad = checkGamepadConnection();
       if (!gamepad) {
-        statusDiv.innerText = "USBゲームコントローラーが接続されていません。接続をお待ちしています…";
+        statusDiv.innerText = "USBゲームコントローラーが接続されていません。接続して何かボタンを押してください…";
         currentState = STATE.WAIT_GAMEPAD;
         requestAnimationFrame(mainLoop);
         return;
