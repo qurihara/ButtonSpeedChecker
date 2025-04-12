@@ -122,9 +122,9 @@
 
   // シェア用テキストの作成
   const tweetText = encodeURIComponent(
-    `#おじ教授のボタン押下速度測定アプリ結果
-ボタン押下所要時間: 平均${xStats.avg.toFixed(2)} ms (${(xStats.avg/16.67).toFixed(2)} フレーム), 標準偏差${xStats.std.toFixed(2)} ms (${(xStats.std/16.67).toFixed(2)} フレーム)
-押下後戻り所要時間: 平均${yStats.avg.toFixed(2)} ms (${(yStats.avg/16.67).toFixed(2)} フレーム), 標準偏差${yStats.std.toFixed(2)} ms (${(yStats.std/16.67).toFixed(2)} フレーム)`
+    `ボタン押下所要時間: 平均${xStats.avg.toFixed(2)} ms (${(xStats.avg/16.67).toFixed(2)} F), 標準偏差${xStats.std.toFixed(2)} ms (${(xStats.std/16.67).toFixed(2)} F)
+押下後戻り所要時間: 平均${yStats.avg.toFixed(2)} ms (${(yStats.avg/16.67).toFixed(2)} F), 標準偏差${yStats.std.toFixed(2)} ms (${(yStats.std/16.67).toFixed(2)} F)
+#おじ教授のボタン押下速度測定アプリ #栗原式インパクトボタン`
   );
       // Twitter（X）のシェアリンク生成
       const tweetUrl = `https://twitter.com/intent/tweet?text=${tweetText}`;
