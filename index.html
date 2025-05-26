@@ -101,38 +101,58 @@
 
     // 統計結果表示とTwitter（X）シェアリンク生成
     function displayResults() {
-  const xStats = calculateStats(xTimes);
-  const yStats = calculateStats(yTimes);
-  let html = `<h4>計測結果</h4>`;
-  html += `<p><strong>ボタン押下所要時間（T1 - T0）</strong></p>
-    <ul>
-      <li>平均: ${xStats.avg.toFixed(2)} ms (${(xStats.avg/16.67).toFixed(2)} フレーム)</li>
-      <li>標準偏差: ${xStats.std.toFixed(2)} ms (${(xStats.std/16.67).toFixed(2)} フレーム)</li>
-      <li>最小: ${xStats.min.toFixed(2)} ms (${(xStats.min/16.67).toFixed(2)} フレーム)</li>
-      <li>最大: ${xStats.max.toFixed(2)} ms (${(xStats.max/16.67).toFixed(2)} フレーム)</li>
-    </ul>`;
-  html += `<p><strong>押下後戻り所要時間（T2 - T1）</strong></p>
-    <ul>
-      <li>平均: ${yStats.avg.toFixed(2)} ms (${(yStats.avg/16.67).toFixed(2)} フレーム)</li>
-      <li>標準偏差: ${yStats.std.toFixed(2)} ms (${(yStats.std/16.67).toFixed(2)} フレーム)</li>
-      <li>最小: ${yStats.min.toFixed(2)} ms (${(yStats.min/16.67).toFixed(2)} フレーム)</li>
-      <li>最大: ${yStats.max.toFixed(2)} ms (${(yStats.max/16.67).toFixed(2)} フレーム)</li>
-    </ul>`;
-  resultDiv.innerHTML = html;
+      const xStats = calculateStats(xTimes);
+      const yStats = calculateStats(yTimes);
+      let html = `<h4>計測結果</h4>`;
+      html += `<p><strong>ボタン押下所要時間（T1 - T0）</strong></p>
+        <ul>
+          <li>平均: ${xStats.avg.toFixed(2)} ms (${(xStats.avg/16.67).toFixed(2)} フレーム)</li>
+          <li>標準偏差: ${xStats.std.toFixed(2)} ms (${(xStats.std/16.67).toFixed(2)} フレーム)</li>
+          <li>最小: ${xStats.min.toFixed(2)} ms (${(xStats.min/16.67).toFixed(2)} フレーム)</li>
+          <li>最大: ${xStats.max.toFixed(2)} ms (${(xStats.max/16.67).toFixed(2)} フレーム)</li>
+        </ul>`;
+      html += `<p><strong>押下後戻り所要時間（T2 - T1）</strong></p>
+        <ul>
+          <li>平均: ${yStats.avg.toFixed(2)} ms (${(yStats.avg/16.67).toFixed(2)} フレーム)</li>
+          <li>標準偏差: ${yStats.std.toFixed(2)} ms (${(yStats.std/16.67).toFixed(2)} フレーム)</li>
+          <li>最小: ${yStats.min.toFixed(2)} ms (${(yStats.min/16.67).toFixed(2)} フレーム)</li>
+          <li>最大: ${yStats.max.toFixed(2)} ms (${(yStats.max/16.67).toFixed(2)} フレーム)</li>
+        </ul>`;
+      resultDiv.innerHTML = html;
 
-  // シェア用テキストの作成
-  const tweetText = encodeURIComponent(
-    `ボタン押下時間:平均${xStats.avg.toFixed(2)} ms (${(xStats.avg/16.67).toFixed(2)} F), 標準偏差${xStats.std.toFixed(2)} ms
+      // シェア用テキストの作成
+      const tweetText = encodeURIComponent(
+        `ボタン押下時間:平均${xStats.avg.toFixed(2)} ms (${(xStats.avg/16.67).toFixed(2)} F), 標準偏差${xStats.std.toFixed(2)} ms
 押下後戻り時間:平均${yStats.avg.toFixed(2)} ms (${(yStats.avg/16.67).toFixed(2)} F), 標準偏差${yStats.std.toFixed(2)} ms
 #おじ教授のボタン押下速度測定アプリ`
-  );
+      );
       // Twitter（X）のシェアリンク生成
       const tweetUrl = `https://twitter.com/intent/tweet?text=${tweetText}`;
+
+      // CSVデータの作成
+      const csvContent = [
+        ['#trial', 't1-t0(ms)', 't2-t1(ms)'],
+        ...xTimes.map((x, i) => [i + 1, x.toFixed(2), yTimes[i].toFixed(2)])
+      ].map(row => row.join(',')).join('\n');
+
+      // タイムスタンプの作成（YYYYMMDD_HHMMSS形式）
+      const now = new Date();
+      const timestamp = now.getFullYear() +
+        String(now.getMonth() + 1).padStart(2, '0') +
+        String(now.getDate()).padStart(2, '0') + '_' +
+        String(now.getHours()).padStart(2, '0') +
+        String(now.getMinutes()).padStart(2, '0') +
+        String(now.getSeconds()).padStart(2, '0');
+
+      // CSVダウンロード用のBlobとURLの作成
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const csvUrl = URL.createObjectURL(blob);
 
       // リセットボタンとシェアリンクの表示
       resetAreaDiv.innerHTML = `
         <button id="resetButton" class="btn btn-primary me-2">再計測する</button>
-        <a id="tweetLink" class="btn btn-info text-white" href="${tweetUrl}" target="_blank">結果をXでつぶやく</a>
+        <a id="tweetLink" class="btn btn-info text-white me-2" href="${tweetUrl}" target="_blank">結果をXでつぶやく</a>
+        <a id="csvDownload" class="btn btn-success" href="${csvUrl}" download="button_speed_measurement_${timestamp}.csv">CSVダウンロード</a>
       `;
       document.getElementById('resetButton').addEventListener('click', resetApp);
     }
