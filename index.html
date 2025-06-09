@@ -235,7 +235,7 @@
                   開始ボタン：「ボタン ${aButtonIndex}」<br>
                   計測対象ボタン：「ボタン ${bButtonIndex}」<br><br>
                   開始ボタン（「ボタン ${aButtonIndex}」）を押すと計測が開始されます。<br>
-                  「開始ボタン→計測対象ボタン→開始ボタン」とできるだけ速く3つのボタンを押す計測を1セットにして、20セット繰り返します。<br>
+                  「開始ボタン→計測対象ボタン→開始ボタン」とできるだけ速く3つのボタンを押す計測を1セットにして、40セット繰り返します。<br>
                   これによって開始ボタンから計測ボタンを押すまでの時間と、その後開始ボタンに戻るまでの時間を計測します。<br>
                   では始めましょう！
                 </p>`;
@@ -274,7 +274,7 @@
             yTimes.push(yTime);
             trialStatusDiv.innerHTML = `<p class="text-success">試行 ${trialCount+1} 終了: 再度開始ボタン押下（T2 = ${T2.toFixed(2)} ms）、押下後戻り所要時間 = T2 - T1 = ${yTime.toFixed(2)} ms。</p>`;
             trialCount++;
-            if (trialCount >= 20) {
+            if (trialCount >= 40) {
               currentState = STATE.COMPLETE;
               statusDiv.innerText = "計測終了";
               instructionDiv.classList.add("d-none");
