@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>おじ教授のボタン押下速度測定アプリ</title>
+  <!-- Bootstrap 5 CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { padding-top: 2rem; }
+    .container { max-width: 600px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- タイトル表示 -->
+    <h1 class="text-center mb-4">おじ教授のボタン押下速度測定アプリ</h1>
+    
+    <!-- 接続状況・状態表示 -->
+    <div id="status" class="alert alert-info text-center">
+      USBゲームコントローラーの接続をお待ちしています…
+    </div>
+
+    <!-- 説明・操作手順 -->
+    <div id="instruction" class="card d-none my-3">
+      <div class="card-body" id="instructionBody">
+        <!-- 固定ボタン設定フェーズの内容が動的に変化 -->
+      </div>
+    </div>
+
+    <!-- 試行状況の表示（各試行毎に上書き） -->
+    <div id="trialStatus" class="mt-4"></div>
+
+    <!-- 結果の表示 -->
+    <div id="result" class="mt-4"></div>
+
+    <!-- リセット／再計測ボタンとシェアリンク（計測終了後に表示） -->
+    <div id="resetArea" class="mt-4"></div>
+  </div>
+
+  <script>
+    // 各フェーズ・状態の定義
+    const STATE = {
+      WAIT_GAMEPAD:   'wait_gamepad',     // ゲームパッド接続待ち
+      FIXED_A:        'fixed_a',          // 固定ボタン設定：開始ボタン押下待ち
+      FIXED_B:        'fixed_b',          // 固定ボタン設定：計測対象ボタン押下待ち（開始ボタンとは異なるもの）
+      READY:          'ready',            // 固定設定完了、試行開始待ち（開始ボタン押下で計測開始）
+      TRIAL_WAIT_A:   'trial_wait_a',     // 試行：開始ボタン押下待ち（T0記録）
+      TRIAL_WAIT_B:   'trial_wait_b',     // 試行：計測対象ボタン押下待ち（T1記録、ボタン押下所要時間を計測）
+      COMPLETE:       'complete'          // 40回計測終了
+    };
+
+    let currentState = STATE.WAIT_GAMEPAD;
+    let trialCount = 0;
+
+    // 各試行の計測結果（ミリ秒）
+    const xTimes = [];  // 「ボタン押下所要時間」＝T1 - T0
+
+    // タイムスタンプ
+    let T0 = 0, T1 = 0;
+
+    // 固定されるボタンのインデックス
+    let aButtonIndex = null; // 「開始ボタン」
+    let bButtonIndex = null; // 「計測対象ボタン」
+
+    // 前回のボタン状態を記録
+    let prevButtonStates = [];
+
+    // HTML要素の参照
+    const statusDiv = document.getElementById('status');
+    const instructionDiv = document.getElementById('instruction');
+    const instructionBody = document.getElementById('instructionBody');
+    const trialStatusDiv = document.getElementById('trialStatus');
+    const resultDiv = document.getElementById('result');
+    const resetAreaDiv = document.getElementById('resetArea');
+
+    // ゲームパッド接続をチェック
+    function checkGamepadConnection() {
+      const gamepads = navigator.getGamepads();
+      for (let gp of gamepads) {
+        if (gp) return gp;
+      }
+      return null;
+    }
+
+    // 統計計算（平均、標準偏差、最小、最大）
+    function calculateStats(values) {
+      const n = values.length;
+      if (n === 0) return { avg: 0, std: 0, min: 0, max: 0 };
+      const sum = values.reduce((acc, val) => acc + val, 0);
+      const avg = sum / n;
+      const variance = (n > 1)
+        ? values.reduce((acc, val) => acc + (val - avg) ** 2, 0) / (n - 1)
+        : 0;
+      const std = Math.sqrt(variance);
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      return { avg, std, min, max };
+    }
+
+    // 統計結果表示とTwitter（X）シェアリンク生成
+    function displayResults() {
+      const xStats = calculateStats(xTimes);
+      let html = `<h4>計測結果</h4>`;
+      html += `<p><strong>ボタン押下所要時間（T1 - T0）</strong></p>
+        <ul>
+          <li>平均: ${xStats.avg.toFixed(2)} ms (${(xStats.avg/16.67).toFixed(2)} フレーム)</li>
+          <li>標準偏差: ${xStats.std.toFixed(2)} ms (${(xStats.std/16.67).toFixed(2)} フレーム)</li>
+          <li>最小: ${xStats.min.toFixed(2)} ms (${(xStats.min/16.67).toFixed(2)} フレーム)</li>
+          <li>最大: ${xStats.max.toFixed(2)} ms (${(xStats.max/16.67).toFixed(2)} フレーム)</li>
+        </ul>`;
+      resultDiv.innerHTML = html;
+
+      // シェア用テキストの作成
+      const tweetText = encodeURIComponent(
+        `ボタン押下時間:平均${xStats.avg.toFixed(2)} ms (${(xStats.avg/16.67).toFixed(2)} F), 標準偏差${xStats.std.toFixed(2)} ms
+#おじ教授のボタン押下速度測定アプリ`
+      );
+      // Twitter（X）のシェアリンク生成
+      const tweetUrl = `https://twitter.com/intent/tweet?text=${tweetText}`;
+
+      // CSVデータの作成
+      const csvContent = [
+        ['#trial', 't1-t0(ms)'],
+        ...xTimes.map((x, i) => [i + 1, x.toFixed(2)])
+      ].map(row => row.join(',')).join('\n');
+
+      // タイムスタンプの作成（YYYYMMDD_HHMMSS形式）
+      const now = new Date();
+      const timestamp = now.getFullYear() +
+        String(now.getMonth() + 1).padStart(2, '0') +
+        String(now.getDate()).padStart(2, '0') + '_' +
+        String(now.getHours()).padStart(2, '0') +
+        String(now.getMinutes()).padStart(2, '0') +
+        String(now.getSeconds()).padStart(2, '0');
+
+      // CSVダウンロード用のBlobとURLの作成
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const csvUrl = URL.createObjectURL(blob);
+
+      // リセットボタンとシェアリンクの表示
+      resetAreaDiv.innerHTML = `
+        <button id="resetButton" class="btn btn-primary me-2">再計測する</button>
+        <a id="tweetLink" class="btn btn-info text-white me-2" href="${tweetUrl}" target="_blank">結果をXでつぶやく</a>
+        <a id="csvDownload" class="btn btn-success" href="${csvUrl}" download="button_speed_measurement_${timestamp}.csv">CSVダウンロード</a>
+      `;
+      document.getElementById('resetButton').addEventListener('click', resetApp);
+    }
+
+    // アプリを初期状態にリセットする関数
+    function resetApp() {
+      // 状態および各変数の初期化
+      currentState = STATE.WAIT_GAMEPAD;
+      trialCount = 0;
+      xTimes.length = 0;
+      T0 = 0; T1 = 0;
+      aButtonIndex = null;
+      bButtonIndex = null;
+      trialStatusDiv.innerHTML = "";
+      resultDiv.innerHTML = "";
+      resetAreaDiv.innerHTML = "";
+      // 固定ボタン設定フェーズに戻す
+      instructionDiv.classList.remove("d-none");
+      instructionBody.innerHTML = `
+        <h5 class="card-title">固定ボタンの設定</h5>
+        <p class="card-text">
+          任意のボタンを押して【開始ボタン】を設定してください。
+        </p>`;
+    }
+
+    // メインループ（ゲームパッドの状態チェックと各状態の処理）
+    function mainLoop() {
+      const gamepad = checkGamepadConnection();
+      if (!gamepad) {
+        statusDiv.innerText = "USBゲームコントローラーが接続されていません。接続して何かボタンを押してください…";
+        currentState = STATE.WAIT_GAMEPAD;
+        requestAnimationFrame(mainLoop);
+        return;
+      } else if (currentState === STATE.WAIT_GAMEPAD) {
+        // ゲームパッド接続が確認できた
+        statusDiv.classList.remove("alert-info");
+        statusDiv.classList.add("alert-success");
+        statusDiv.innerText = "ゲームコントローラーが接続されました。";
+        instructionDiv.classList.remove("d-none");
+        instructionBody.innerHTML = `
+          <h5 class="card-title">ボタンの設定</h5>
+          <p class="card-text">
+            任意のボタンを押して【開始ボタン】を設定してください。インパクトボタンの速度測定をするなら、ホームポジションで右手人差し指の場所にあるボタンを選ぶとよいかもしれません。
+          </p>`;
+        currentState = STATE.FIXED_A;
+        prevButtonStates = gamepad.buttons.map(btn => btn.pressed);
+      }
+      
+      // 現在のボタン状態の取得
+      const curButtons = gamepad.buttons.map(btn => btn.pressed);
+      
+      switch(currentState) {
+        // 固定ボタン設定：開始ボタンの設定待ち
+        case STATE.FIXED_A:
+          for (let i = 0; i < curButtons.length; i++) {
+            if (curButtons[i] && !prevButtonStates[i]) {
+              aButtonIndex = i;
+              instructionBody.innerHTML = `
+                <h5 class="card-title">ボタンの設定</h5>
+                <p class="card-text">
+                  開始ボタンに「ボタン ${i}」を設定しました。<br>
+                  次に、開始ボタンとは異なるボタンを押して【計測対象ボタン】を設定してください。インパクトボタンの速度測定をするなら、インパクトボタンを押してください。
+                </p>`;
+              currentState = STATE.FIXED_B;
+              break;
+            }
+          }
+          break;
+
+        // 固定ボタン設定：計測対象ボタンの設定待ち
+        case STATE.FIXED_B:
+          for (let i = 0; i < curButtons.length; i++) {
+            if (i === aButtonIndex) continue;
+            if (curButtons[i] && !prevButtonStates[i]) {
+              bButtonIndex = i;
+              instructionBody.innerHTML = `
+                <h5 class="card-title">ボタンの設定完了</h5>
+                <p class="card-text">
+                  開始ボタン：「ボタン ${aButtonIndex}」<br>
+                  計測対象ボタン：「ボタン ${bButtonIndex}」<br><br>
+                  開始ボタン（「ボタン ${aButtonIndex}」）を押すと計測が開始されます。<br>
+                  「開始ボタン→計測対象ボタン」とできるだけ速く2つのボタンを押す計測を1セットにして、40セット繰り返します。<br>
+                  これによって開始ボタンから計測ボタンを押すまでの時間を計測します。<br>
+                  では始めましょう！
+                </p>`;
+              currentState = STATE.READY;
+              break;
+            }
+          }
+          break;
+
+        // 試行開始待ち：開始ボタン押下で計測開始
+        case STATE.READY:
+          trialStatusDiv.innerHTML = `<p class="text-primary">試行 ${trialCount+1} 開始待ち：開始ボタン（ボタン ${aButtonIndex}）を押してください。</p>`;
+          if (curButtons[aButtonIndex] && !prevButtonStates[aButtonIndex]) {
+            T0 = performance.now();
+            trialStatusDiv.innerHTML = `<p class="text-primary">試行 ${trialCount+1}: 開始ボタン押下（T0 = ${T0.toFixed(2)} ms）。次に計測対象ボタン（ボタン ${bButtonIndex}）を押してください。</p>`;
+            currentState = STATE.TRIAL_WAIT_B;
+          }
+          break;
+
+        // 試行：計測対象ボタン押下待ち（T1記録 → ボタン押下所要時間計測）
+        case STATE.TRIAL_WAIT_B:
+          if (curButtons[bButtonIndex] && !prevButtonStates[bButtonIndex]) {
+            T1 = performance.now();
+            const xTime = T1 - T0;
+            xTimes.push(xTime);
+            trialStatusDiv.innerHTML = `<p class="text-success">試行 ${trialCount+1} 終了: 計測対象ボタン押下（T1 = ${T1.toFixed(2)} ms）。<br>ボタン押下所要時間 = T1 - T0 = ${xTime.toFixed(2)} ms。</p>`;
+            trialCount++;
+            if (trialCount >= 40) {
+              currentState = STATE.COMPLETE;
+              statusDiv.innerText = "計測終了";
+              instructionDiv.classList.add("d-none");
+              displayResults();
+            } else {
+              currentState = STATE.READY;
+            }
+          }
+          break;
+
+        case STATE.COMPLETE:
+          // 計測終了後は処理不要（結果表示済み）
+          break;
+      }
+
+      // 現在のボタン状態を保存
+      prevButtonStates = curButtons.slice();
+      requestAnimationFrame(mainLoop);
+    }
+
+    window.addEventListener('load', () => {
+      requestAnimationFrame(mainLoop);
+    });
+  </script>
+</body>
+</html>
