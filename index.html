@@ -247,10 +247,10 @@
 
         // 試行開始待ち：開始ボタン押下で計測開始
         case STATE.READY:
-          trialStatusDiv.innerHTML = `<p class="text-primary">試行 ${trialCount+1} 開始待ち：開始ボタン（ボタン ${aButtonIndex}）を押して離してください。</p>`;
-          if (!curButtons[aButtonIndex] && prevButtonStates[aButtonIndex]) {
+          trialStatusDiv.innerHTML = `<p class="text-primary">試行 ${trialCount+1} 開始待ち：開始ボタン（ボタン ${aButtonIndex}）を押してください。</p>`;
+          if (curButtons[aButtonIndex] && !prevButtonStates[aButtonIndex]) {
             T0 = performance.now();
-            trialStatusDiv.innerHTML = `<p class="text-primary">試行 ${trialCount+1}: 開始ボタンリリース（T0 = ${T0.toFixed(2)} ms）。次に計測対象ボタン（ボタン ${bButtonIndex}）を押してください。</p>`;
+            trialStatusDiv.innerHTML = `<p class="text-primary">試行 ${trialCount+1}: 開始ボタン押下（T0 = ${T0.toFixed(2)} ms）。次に計測対象ボタン（ボタン ${bButtonIndex}）を押してください。</p>`;
             currentState = STATE.TRIAL_WAIT_B;
           }
           break;
