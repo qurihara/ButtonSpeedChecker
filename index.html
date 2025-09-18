@@ -42,7 +42,7 @@
     const STATE = {
       WAIT_GAMEPAD:   'wait_gamepad',     // ゲームパッド接続待ち
       FIXED_A:        'fixed_a',          // 固定ボタン設定：開始ボタン押下待ち
-      FIXED_B:        'fixed_b',          // 固定ボタン設定：計測対象ボタン押下待ち（開始ボタンとは異なるもの）
+      FIXED_B:        'fixed_b',          // 固定ボタン設定：計測対象ボタン押下待ち
       READY:          'ready',            // 固定設定完了、試行開始待ち（開始ボタン押下で計測開始）
       TRIAL_WAIT_A:   'trial_wait_a',     // 試行：開始ボタン押下待ち（T0記録）
       TRIAL_WAIT_B:   'trial_wait_b',     // 試行：計測対象ボタン押下待ち（T1記録、ボタン押下所要時間を計測）
@@ -215,7 +215,7 @@
                 <h5 class="card-title">ボタンの設定</h5>
                 <p class="card-text">
                   開始ボタンに「ボタン ${i}」を設定しました。<br>
-                  次に、開始ボタンとは異なるボタンを押して【計測対象ボタン】を設定してください。インパクトボタンの速度測定をするなら、インパクトボタンを押してください。
+                  次に、【計測対象ボタン】を設定してください。開始ボタンと同じボタンも設定可能です。インパクトボタンの速度測定をするなら、インパクトボタンを押してください。
                 </p>`;
               currentState = STATE.FIXED_B;
               break;
@@ -226,7 +226,6 @@
         // 固定ボタン設定：計測対象ボタンの設定待ち
         case STATE.FIXED_B:
           for (let i = 0; i < curButtons.length; i++) {
-            if (i === aButtonIndex) continue;
             if (curButtons[i] && !prevButtonStates[i]) {
               bButtonIndex = i;
               instructionBody.innerHTML = `
